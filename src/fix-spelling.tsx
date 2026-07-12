@@ -60,16 +60,16 @@ export default function Command() {
                   <Action
                     title="Replace Selected Text"
                     icon={Icon.TextCursor}
-                    onAction={async () => {
-                      await replaceText(typeof item.title === "string" ? item.title : item.title.value);
+                    onAction={() => {
+                      replaceText(typeof item.title === "string" ? item.title : item.title.value);
                     }}
                   />
                   <Action
                     title="Copy Suggestion"
                     icon={Icon.Clipboard}
                     shortcut={Keyboard.Shortcut.Common.Copy}
-                    onAction={async () => {
-                      await copySuggestion(typeof item.title === "string" ? item.title : item.title.value);
+                    onAction={() => {
+                      copySuggestion(typeof item.title === "string" ? item.title : item.title.value);
                     }}
                   />
                   {refreshAction}
