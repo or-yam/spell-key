@@ -1,24 +1,50 @@
-import { ActionPanel, Action, Icon, List } from "@raycast/api";
-import { replaceText } from "./replace-text";
+import { ActionPanel, Action, Icon, Keyboard, List } from "@raycast/api";
+import { copySuggestion, replaceText } from "./replace-text";
 import { useFixSpelling } from "./useFixSpelling";
 
-// Test words:  recieve, worlf
-
 export default function Command() {
-  const { list, word, error, isLoading } = useFixSpelling();
+  const { list, word, error, status, refresh } = useFixSpelling();
 
-  if (error) {
+  const refreshAction = (
+    <Action
+      title="Refresh Selection"
+      icon={Icon.RotateAntiClockwise}
+      shortcut={Keyboard.Shortcut.Common.Refresh}
+      onAction={refresh}
+    />
+  );
+
+  if (status === "error") {
     return (
       <List>
-        <List.EmptyView title={"Something went wrong"} description={error} />
+        <List.EmptyView
+          title="Couldn’t check spelling"
+          description={error ?? "Unknown error occurred"}
+          actions={<ActionPanel>{refreshAction}</ActionPanel>}
+        />
       </List>
     );
   }
 
   return (
-    <List isLoading={isLoading} searchBarPlaceholder={`Suggestions for: "${word}"`}>
-      {list.length === 0 ? (
-        <List.EmptyView title="No suggestions found" description="Try selecting a different word or phrase." />
+    <List
+      isLoading={status === "loading"}
+      searchBarPlaceholder={word ? `Suggestions for: “${word}”` : "Spelling suggestions"}
+    >
+      {status === "no-selection" ? (
+        <List.EmptyView
+          icon={Icon.TextCursor}
+          title="No text selected"
+          description="Select a word or phrase, then refresh the selection."
+          actions={<ActionPanel>{refreshAction}</ActionPanel>}
+        />
+      ) : status === "no-suggestions" ? (
+        <List.EmptyView
+          icon={Icon.CheckCircle}
+          title="No spelling corrections found"
+          description={word ? `“${word}” has no suggestions.` : undefined}
+          actions={<ActionPanel>{refreshAction}</ActionPanel>}
+        />
       ) : (
         list.map((item) => (
           <List.Item
@@ -29,12 +55,21 @@ export default function Command() {
             actions={
               <ActionPanel>
                 <Action
-                  title="Replace Text"
-                  icon={Icon.ThumbsUpFilled}
+                  title="Replace Selected Text"
+                  icon={Icon.TextCursor}
                   onAction={async () => {
                     await replaceText(typeof item.title === "string" ? item.title : item.title.value);
                   }}
                 />
+                <Action
+                  title="Copy Suggestion"
+                  icon={Icon.Clipboard}
+                  shortcut={Keyboard.Shortcut.Common.Copy}
+                  onAction={async () => {
+                    await copySuggestion(typeof item.title === "string" ? item.title : item.title.value);
+                  }}
+                />
+                {refreshAction}
               </ActionPanel>
             }
           />
