@@ -5,7 +5,7 @@ import { useFixSpelling } from "./useFixSpelling";
 // Test words:  recieve, worlf
 
 export default function Command() {
-  const { list, word, error, isLoading, resetWord } = useFixSpelling();
+  const { list, word, error, isLoading } = useFixSpelling();
 
   if (error) {
     return (
@@ -31,9 +31,8 @@ export default function Command() {
                 <Action
                   title="Replace Text"
                   icon={Icon.ThumbsUpFilled}
-                  onAction={() => {
-                    replaceText(typeof item.title === "string" ? item.title : item.title.value);
-                    resetWord();
+                  onAction={async () => {
+                    await replaceText(typeof item.title === "string" ? item.title : item.title.value);
                   }}
                 />
               </ActionPanel>

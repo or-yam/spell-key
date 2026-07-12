@@ -26,16 +26,16 @@
     "spell-key"
   ],
   "dependencies": {
-    "@raycast/api": "^1.103.1",
-    "@raycast/utils": "^2.2.0"
+    "@raycast/api": "^1.104.22",
+    "@raycast/utils": "^2.2.7"
   },
   "devDependencies": {
-    "@raycast/eslint-config": "^2.0.4",
-    "@types/node": "24.5.1",
-    "@types/react": "19.1.13",
-    "eslint": "^9.35.0",
-    "prettier": "^3.6.2",
-    "typescript": "^5.9.2"
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "^26.1.1",
+    "@types/react": "19.2.17",
+    "eslint": "^10.6.0",
+    "prettier": "^3.9.5",
+    "typescript": "^6.0.3"
   },
   "scripts": {
     "build": "ray build",
