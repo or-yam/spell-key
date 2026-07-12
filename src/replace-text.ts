@@ -3,7 +3,6 @@ import { Clipboard, closeMainWindow, showHUD } from "@raycast/api";
 export async function replaceText(text: string) {
   await closeMainWindow();
   await Clipboard.paste(text);
-  await showHUD(`Replaced with “${text}”`);
 }
 
 export async function copySuggestion(text: string) {

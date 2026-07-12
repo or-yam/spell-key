@@ -38,6 +38,8 @@ export default function Command() {
           description="Select a word or phrase, then refresh the selection."
           actions={<ActionPanel>{refreshAction}</ActionPanel>}
         />
+      ) : status === "loading" ? (
+        <List.EmptyView title="Checking spelling…" actions={<ActionPanel>{refreshAction}</ActionPanel>} />
       ) : status === "no-suggestions" ? (
         <List.EmptyView
           icon={Icon.CheckCircle}
@@ -46,34 +48,36 @@ export default function Command() {
           actions={<ActionPanel>{refreshAction}</ActionPanel>}
         />
       ) : (
-        list.map((item) => (
-          <List.Item
-            key={item.id}
-            icon={item.icon}
-            title={item.title}
-            subtitle={item.subtitle}
-            actions={
-              <ActionPanel>
-                <Action
-                  title="Replace Selected Text"
-                  icon={Icon.TextCursor}
-                  onAction={async () => {
-                    await replaceText(typeof item.title === "string" ? item.title : item.title.value);
-                  }}
-                />
-                <Action
-                  title="Copy Suggestion"
-                  icon={Icon.Clipboard}
-                  shortcut={Keyboard.Shortcut.Common.Copy}
-                  onAction={async () => {
-                    await copySuggestion(typeof item.title === "string" ? item.title : item.title.value);
-                  }}
-                />
-                {refreshAction}
-              </ActionPanel>
-            }
-          />
-        ))
+        <List.Section title={`Suggestions for “${word}”`} subtitle="Seeing the wrong word? Press ⌘R to refresh.">
+          {list.map((item) => (
+            <List.Item
+              key={item.id}
+              icon={item.icon}
+              title={item.title}
+              subtitle={item.subtitle}
+              actions={
+                <ActionPanel>
+                  <Action
+                    title="Replace Selected Text"
+                    icon={Icon.TextCursor}
+                    onAction={async () => {
+                      await replaceText(typeof item.title === "string" ? item.title : item.title.value);
+                    }}
+                  />
+                  <Action
+                    title="Copy Suggestion"
+                    icon={Icon.Clipboard}
+                    shortcut={Keyboard.Shortcut.Common.Copy}
+                    onAction={async () => {
+                      await copySuggestion(typeof item.title === "string" ? item.title : item.title.value);
+                    }}
+                  />
+                  {refreshAction}
+                </ActionPanel>
+              }
+            />
+          ))}
+        </List.Section>
       )}
     </List>
   );
