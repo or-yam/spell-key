@@ -1,5 +1,5 @@
 import { getSelectedText, Icon, List } from "@raycast/api";
-import { ComponentProps, useCallback, useEffect, useState } from "react";
+import { ComponentProps, useEffect, useState } from "react";
 import { getSpellingSuggestions } from "./spell-check";
 
 type ItemProps = ComponentProps<typeof List.Item>;
@@ -11,40 +11,35 @@ export const useFixSpelling = () => {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("loading");
 
-  const refresh = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
-    setList([]);
-    setWord("");
+  useEffect(() => {
+    async function checkSelection() {
+      try {
+        const text = await getSelectedText();
+        if (!text.trim()) {
+          setStatus("no-selection");
+          return;
+        }
 
-    try {
-      const text = await getSelectedText();
-      if (!text.trim()) {
-        setStatus("no-selection");
-        return;
+        setWord(text);
+        const items = await getSpellingSuggestions(text);
+        const suggestions: ItemProps[] = items.map((suggestion, index) => ({
+          id: `${suggestion}-${index}`,
+          icon: Icon.Text,
+          title: suggestion,
+          subtitle: "Suggested correction",
+        }));
+        setList(suggestions);
+        setStatus(suggestions.length > 0 ? "ready" : "no-suggestions");
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        console.error(errorMessage);
+        setError(errorMessage);
+        setStatus("error");
       }
-
-      setWord(text);
-      const items = await getSpellingSuggestions(text);
-      const suggestions: ItemProps[] = items.map((suggestion, index) => ({
-        id: `${suggestion}-${index}`,
-        icon: Icon.Text,
-        title: suggestion,
-        subtitle: "Suggested correction",
-      }));
-      setList(suggestions);
-      setStatus(suggestions.length > 0 ? "ready" : "no-suggestions");
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      console.error(errorMessage);
-      setError(errorMessage);
-      setStatus("error");
     }
+
+    void checkSelection();
   }, []);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  return { list, word, error, status, refresh };
+  return { list, word, error, status };
 };

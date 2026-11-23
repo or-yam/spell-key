@@ -1,8 +1,12 @@
-import { Clipboard, closeMainWindow, showHUD } from "@raycast/api";
+import { Clipboard, closeMainWindow, popToRoot, PopToRootType, showHUD } from "@raycast/api";
 
 export async function replaceText(text: string) {
-  await closeMainWindow();
-  await Clipboard.paste(text);
+  await closeMainWindow({ popToRootType: PopToRootType.Suspended });
+  try {
+    await Clipboard.paste(text, { closeMainWindow: false });
+  } finally {
+    await popToRoot();
+  }
 }
 
 export async function copySuggestion(text: string) {

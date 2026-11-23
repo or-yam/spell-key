@@ -20,7 +20,7 @@ The fastest and easiest way I could find was to implement it as a Raycast extens
 ## Requirements
 
 - macOS on Apple Silicon.
-- Raycast.
+- Raycast 2.13 or later.
 
 ## Usage
 
