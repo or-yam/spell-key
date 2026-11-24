@@ -24,7 +24,7 @@ The fastest and easiest way I could find was to implement it as a Raycast extens
 
 ## Usage
 
-1. Select a word or phrase in any app.
+1. Select one English word in the app you’re editing. Surrounding punctuation and whitespace are preserved.
 2. Open the `Fix Spelling` command in Raycast.
 3. Choose a suggestion.
 4. Press `Enter` to replace the selection.
@@ -36,3 +36,5 @@ npm install
 native/build.sh
 npm run dev
 ```
+
+Run `npm test` after rebuilding the native helper to check spelling and replacement output.

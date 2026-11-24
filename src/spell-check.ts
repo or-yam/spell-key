@@ -1,99 +1,50 @@
-import { spawn } from "node:child_process";
-import { access } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { environment } from "@raycast/api";
 
-const MAX_WORD_LENGTH = "pneumonoultramicroscopicsilicovolcanoconiosis".length;
+const runHelper = promisify(execFile);
+const MAX_SELECTION_LENGTH = 1024;
 
-export class BinaryNotFoundError extends Error {
-  constructor(binaryPath: string) {
-    super(`Native spell check binary not found at: ${binaryPath}`);
-    this.name = "BinaryNotFoundError";
-  }
-}
+type SpellCheckResult = { status: "correct" | "invalid-selection" } | { status: "misspelled"; suggestions: string[] };
 
-export class SpellCheckError extends Error {
-  constructor(
-    message: string,
-    public readonly exitCode?: number | null,
-  ) {
-    super(`Spell check failed: ${message}`);
-    this.name = "SpellCheckError";
-  }
-}
-
-export class InvalidInputError extends Error {
-  constructor(message: string) {
-    super(`Invalid input: ${message}`);
-    this.name = "InvalidInputError";
-  }
-}
-
-function spawnAsync(command: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const process = spawn(command, args);
-    let stdout = "";
-    let stderr = "";
-
-    process.stdout?.on("data", (data) => {
-      stdout += data.toString();
-    });
-
-    process.stderr?.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    process.on("close", (code) => {
-      if (code === 0) {
-        resolve({ stdout: stdout.trim(), stderr: stderr.trim() });
-      } else {
-        reject(new SpellCheckError(stderr || `Process exited with code ${code}`, code));
-      }
-    });
-
-    process.on("error", (error) => {
-      reject(new SpellCheckError(`Failed to spawn process: ${error.message}`));
-    });
-  });
-}
-
-export async function getSpellingSuggestions(word: string): Promise<string[]> {
-  const trimmedWord = word.trim();
-
-  if (!trimmedWord || trimmedWord.length === 0) {
-    throw new InvalidInputError("Word cannot be empty");
+export async function checkSpelling(selection: string): Promise<SpellCheckResult> {
+  if (selection.length > MAX_SELECTION_LENGTH || selection.includes("\0")) {
+    return { status: "invalid-selection" };
   }
 
-  if (trimmedWord.length > MAX_WORD_LENGTH) {
-    throw new InvalidInputError("Word is too long");
-  }
-
-  const binaryPath = join(environment.assetsPath, "spellcheck-native");
-
+  let stdout: string;
   try {
-    try {
-      await access(binaryPath);
-    } catch {
-      throw new BinaryNotFoundError(binaryPath);
-    }
-
-    const { stdout } = await spawnAsync(binaryPath, [trimmedWord]);
-
-    if (!stdout) {
-      return [];
-    }
-
-    const suggestions = stdout.split(/,\s*/).filter(Boolean);
-    return suggestions;
+    ({ stdout } = await runHelper(join(environment.assetsPath, "spellcheck-native"), [selection], {
+      encoding: "utf8",
+    }));
   } catch (error) {
-    if (
-      error instanceof InvalidInputError ||
-      error instanceof BinaryNotFoundError ||
-      error instanceof SpellCheckError
-    ) {
-      throw error;
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      throw new Error("Missing executable. Rebuild the native spell-check helper.");
+    }
+    throw new Error("Could not run the native spell-check helper.");
+  }
+
+  let result: unknown;
+  try {
+    result = JSON.parse(stdout);
+  } catch {
+    throw new Error("The native spell-check helper returned an invalid result.");
+  }
+  if (result && typeof result === "object" && "status" in result) {
+    if (result.status === "correct" || result.status === "invalid-selection") {
+      return { status: result.status };
     }
 
-    throw new SpellCheckError(error instanceof Error ? error.message : "Unknown error occurred");
+    if (
+      result.status === "misspelled" &&
+      "suggestions" in result &&
+      Array.isArray(result.suggestions) &&
+      result.suggestions.every((suggestion: unknown) => typeof suggestion === "string" && suggestion.trim())
+    ) {
+      return { status: "misspelled", suggestions: result.suggestions };
+    }
   }
+
+  throw new Error("The native spell-check helper returned an invalid result.");
 }

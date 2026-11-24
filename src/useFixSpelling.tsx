@@ -1,45 +1,60 @@
-import { getSelectedText, Icon, List } from "@raycast/api";
-import { ComponentProps, useEffect, useState } from "react";
-import { getSpellingSuggestions } from "./spell-check";
+import { getSelectedText } from "@raycast/api";
+import { useEffect, useRef, useState } from "react";
+import { checkSpelling } from "./spell-check";
 
-type ItemProps = ComponentProps<typeof List.Item>;
-type Status = "loading" | "ready" | "no-selection" | "no-suggestions" | "error";
+type State =
+  | { status: "loading" | "capture-error" | "no-selection" | "invalid-selection" }
+  | { status: "correct" | "no-suggestions"; word: string }
+  | { status: "ready"; word: string; suggestions: string[] }
+  | { status: "error"; message: string };
 
-export const useFixSpelling = () => {
-  const [list, setList] = useState<ItemProps[]>([]);
-  const [word, setWord] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<Status>("loading");
+export function useFixSpelling() {
+  const [state, setState] = useState<State>({ status: "loading" });
+
+  const captureStarted = useRef(false);
 
   useEffect(() => {
-    async function checkSelection() {
-      try {
-        const text = await getSelectedText();
-        if (!text.trim()) {
-          setStatus("no-selection");
-          return;
-        }
+    // React can replay the mount effect on the same view in development.
+    if (captureStarted.current) return;
+    captureStarted.current = true;
 
-        setWord(text);
-        const items = await getSpellingSuggestions(text);
-        const suggestions: ItemProps[] = items.map((suggestion, index) => ({
-          id: `${suggestion}-${index}`,
-          icon: Icon.Text,
-          title: suggestion,
-          subtitle: "Suggested correction",
-        }));
-        setList(suggestions);
-        setStatus(suggestions.length > 0 ? "ready" : "no-suggestions");
+    async function checkSelection() {
+      let selection: string;
+      try {
+        selection = await getSelectedText();
+      } catch {
+        setState({ status: "capture-error" });
+        return;
+      }
+
+      const word = selection.trim();
+      if (!word) {
+        setState({ status: "no-selection" });
+        return;
+      }
+
+      try {
+        const result = await checkSpelling(selection);
+        if (result.status === "misspelled") {
+          setState(
+            result.suggestions.length
+              ? { status: "ready", word, suggestions: result.suggestions }
+              : { status: "no-suggestions", word },
+          );
+        } else if (result.status === "correct") {
+          setState({ status: "correct", word });
+        } else {
+          setState({ status: "invalid-selection" });
+        }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        console.error(errorMessage);
-        setError(errorMessage);
-        setStatus("error");
+        const message = error instanceof Error ? error.message : "Unknown error occurred";
+        console.error(message);
+        setState({ status: "error", message });
       }
     }
 
     void checkSelection();
   }, []);
 
-  return { list, word, error, status };
-};
+  return state;
+}
